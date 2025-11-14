@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lumina AI — Forex Partner</title>
+
+<!-- TradingView Lightweight Charts -->
+<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+
+<style>
+    body {
+        margin: 0;
+        background: #0b0f19;
+        font-family: Arial, sans-serif;
+        color: #fff;
+    }
+
+    #chart {
+        height: 60vh;
+        width: 100%;
+        background: #0b0f19;
+        border-bottom: 1px solid #333;
+    }
+
+    .panel {
+        padding: 12px;
+        background: #111726;
+        border-top: 1px solid #333;
+    }
+
+    button {
+        padding: 10px 16px;
+        margin: 4px;
+        border-radius: 10px;
+        border: none;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+    .buy { background: #0be881; }
+    .sell { background: #ff3f34; color: #fff; }
+    .clear { background: #777; color: #fff; }
+    .auto { background: #1e90ff; color: #fff; }
+    .stop { background: #ff4757; color: #fff; }
+
+    .assistant-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #c226ff;
+        padding: 15px 22px;
+        border-radius: 40px;
+        font-size: 16px;
+        color: white;
+        cursor: pointer;
+        box-shadow: 0 0 12px #c226ff;
+    }
+
+    #assistantBox {
+        position: fixed;
+        right: 20px;
+        bottom: 90px;
+        background: #1a1a2e;
+        padding: 15px;
+        width: 280px;
+        border-radius: 10px;
+        border: 1px solid #444;
+        display: none;
+    }
+
+    input, select {
+        padding: 6px;
+        border-radius: 6px;
+        border: none;
+        margin-top: 6px;
+    }
+</style>
+</head>
+
+<body>
+
+<!-- CHART AREA -->
+<div id="chart"></div>
+
+<!-- CONTROL PANEL -->
+<div class="panel">
+
+    <label>Timeframe:</label>
+    <select id="tf">
+        <option value="1">1m</option>
+        <option value="5">5m</option>
+        <option value="15">15m</option>
+        <option value="60">1H</option>
+        <option value="240">4H</option>
+        <option value="1440">1D</option>
+    </select>
+
+    <label>
+        <input type="checkbox" id="demoMode" checked /> Demo
+    </label>
+    <br><br>
+
+    <button class="buy" onclick="simBuy()">Sim BUY</button>
+    <button class="sell" onclick="simSell()">Sim SELL</button>
+    <button class="clear" onclick="clearMarkers()">Clear</button>
+    <br><br>
+
+    <h3>Lumina — Auto Trade Mode</h3>
+    <label><input type="checkbox" id="autoTradeChk" /> Enable Auto Trade</label>
+    <br>
+    Confidence ≥ <input id="autoConf" type="number" value="100" style="width:60px" />%
+    <br><br>
+
+    <button class="auto" onclick="startAuto()">Start Auto</button>
+    <button class="stop" onclick="stopAuto()">Stop Auto</button>
+</div>
+
+<!-- LUMINA AI ASSISTANT BOX -->
+<div id="assistantBox">
+    <b>Lumina AI Assistant 💜</b><br>
+    <textarea id="askLumina" style="width:100%;height:70px;background:#0b0f19;color:#fff;border:1px solid #444;border-radius:8px;"></textarea>
+    <button style="width:100%;margin-top:6px;background:#c226ff;color:#fff;border-radius:8px;" onclick="luminaReply()">Ask</button>
+    <div id="luminaOutput" style="padding-top:8px;font-size:14px;color:#ddd;"></div>
+</div>
+
+<!-- FLOATING BUTTON -->
+<div class="assistant-btn" onclick="toggleAssistant()">💜 Lumina</div>
+
+<script>
+/* === CREATE CHART === */
+const chart = LightweightCharts.createChart(document.getElementById("chart"), {
+    layout: { background: { color: "#0b0f19" }, textColor: "#fff" },
+    grid: { vertLines: { color: "#222" }, horzLines: { color: "#222" } }
+});
+const candleSeries = chart.addCandlestickSeries({
+    upColor: "green",
+    downColor: "red",
+    borderDownColor: "red",
+    borderUpColor: "green",
+    wickDownColor: "red",
+    wickUpColor: "green"
+});
+
+/* === DUMMY DATA FOR DEMO === */
+let data = [];
+for (let i = 0; i < 200; i++) {
+    let o = 1.1000 + Math.random() * 0.01;
+    let c = 1.1000 + Math.random() * 0.01;
+    let h = Math.max(o, c) + Math.random() * 0.005;
+    let l = Math.min(o, c) - Math.random() * 0.005;
+    data.push({ time: i, open: o, high: h, low: l, close: c });
+}
+candleSeries.setData(data);
+
+/* === SIGNAL MARKERS === */
+let markers = [];
+function simBuy() {
+    markers.push({ time: data[data.length-1].time, position: "belowBar", color: "green", shape: "arrowUp", text: "BUY" });
+    candleSeries.setMarkers(markers);
+}
+function simSell() {
+    markers.push({ time: data[data.length-1].time, position: "aboveBar", color: "red", shape: "arrowDown", text: "SELL" });
+    candleSeries.setMarkers(markers);
+}
+function clearMarkers() {
+    markers = [];
+    candleSeries.setMarkers([]);
+}
+
+/* === AUTO TRADE (DEMO) === */
+let autoRunning = false;
+function startAuto() {
+    autoRunning = true;
+    alert("Auto trade started (demo only).");
+}
+function stopAuto() {
+    autoRunning = false;
+    alert("Auto trade stopped.");
+}
+
+/* === LUMINA ASSISTANT === */
+function toggleAssistant() {
+    const box = document.getElementById("assistantBox");
+    box.style.display = (box.style.display === "none") ? "block" : "none";
+}
+
+function luminaReply() {
+    let q = document.getElementById("askLumina").value;
+    document.getElementById("luminaOutput").innerHTML =
+        "Lumina 💜: " + "Baby I understand — " + q;
+}
+</script>
+
+</body>
+</html>
