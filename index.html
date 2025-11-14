@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Lumina — Forex Partner (All-in-One)</title>
+
+<!-- Lightweight Charts -->
+<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+
+<style>
+  :root{
+    --bg-dark:#071022; --panel:#071733; --muted:#9fb7ca; --accent:#2ee28b; --danger:#ff5c6c;
+    --card:#0b1420; --card-2:#091425; --glass:rgba(255,255,255,0.02);
+  }
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial,Helvetica,sans-serif;background:var(--bg-dark);color:#e6eef8;-webkit-font-smoothing:antialiased}
+  .app{display:grid;grid-template-columns:1fr 420px;gap:12px;height:100vh;padding:10px;box-sizing:border-box}
+  @media(max-width:1000px){.app{grid-template-columns:1fr;padding:6px} .assistantBtn{right:12px;bottom:12px} .desktopToggle{left:8px} .app{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.006));border-radius:10px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,0.6)}
+  #chartContainer{height:72vh;border-radius:10px;overflow:hidden;background:var(--card)}
+  select,input,button{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;font-size:14px}
+  .small{font-size:13px;color:var(--muted)}
+  .signalsList{max-height:340px;overflow:auto;margin-top:8px}
+  .signalItem{padding:8px;border-bottom:1px dashed rgba(255,255,255,0.03)}
+  .tagBuy{color:var(--accent);font-weight:800}
+  .tagSell{color:var(--danger);font-weight:800}
+  .toast{position:fixed;right:18px;bottom:18px;background:#112233;padding:10px 14px;border-radius:10px;display:none;color:white;z-index:200}
+  .assistantBtn{position:fixed;right:18px;bottom:18px;background:linear-gradient(90deg,#6f21d1,#d13fb8);border-radius:999px;padding:12px 16px;color:white;font-weight:700;box-shadow:0 12px 40px rgba(100,40,160,0.28);z-index:220;border:none}
+  .desktopToggle{position:fixed;left:18px;bottom:18px;padding:8px;border-radius:8px;background:#0b2540;color:#fff;z-index:220}
+  .assistantPanel{position:fixed;left:0;right:0;bottom:0;height:0;max-height:92vh;background:var(--panel);border-top-left-radius:14px;border-top-right-radius:14px;overflow:hidden;transition:height .28s;z-index:230}
+  .assistantHeader{display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid rgba(255,255,255,0.03)}
+  .avatar{width:56px;height:56px;border-radius:12px;flex-shrink:0;background:linear-gradient(135deg,#ffe6f6,#ffd8b0);display:flex;align-items:center;justify-content:center;color:#111;font-weight:800}
+  .assistantBody{display:flex;flex-direction:column;height:calc(92vh - 140px)}
+  .chatArea{flex:1;overflow:auto;padding:12px}
+  .chatInput{display:flex;gap:8px;padding:8px;border-top:1px solid rgba(255,255,255,0.02)}
+  .chatBubble{max-width:78%;padding:10px;border-radius:12px;margin-bottom:8px}
+  .bubbleUser{background:#0f1724;color:#fff;margin-left:auto;border-bottom-right-radius:4px}
+  .bubbleLumina{background:#0b3140;color:#fff;border-bottom-left-radius:4px}
+  body.light{background:#f5f8fb;color:#0b1220}
+  body.light .card{background:#fff;color:#0b1220}
+  body.desktop .app{grid-template-columns:1fr 520px}
+  .hidden{display:none}
+  .controls-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .btn{padding:8px 10px;border-radius:8px;border:none;background:#1f2937;color:white}
+  .btnPrimary{background:#2563eb}
+  .btnBuy{background:#00b050}
+  .btnSell{background:#ff4d4d}
+  .btnWarn{background:#9b2d2d}
+  .badge{padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.03);font-weight:700}
+  footer.note{font-size:12px;color:var(--muted);margin-top:8px}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- LEFT: Chart -->
+  <div class="card" style="display:flex;flex-direction:column">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+      <select id="symbolSelect" title="Symbol" style="min-width:160px"></select>
+
+      <select id="tfSelect" title="Timeframe" style="min-width:130px">
+        <optgroup label="Seconds">
+          <option value="1s">1s</option><option value="5s">5s</option><option value="10s">10s</option><option value="15s">15s</option><option value="30s">30s</option>
+        </optgroup>
+        <optgroup label="Minutes">
+          <option value="1min">1m</option><option value="3min">3m</option><option value="5min">5m</option><option value="10min">10m</option><option value="15min">15m</option><option value="30min">30m</option>
+        </optgroup>
+        <optgroup label="Hours">
+          <option value="45min">45m</option><option value="1h">1h</option><option value="2h">2h</option><option value="3h">3h</option><option value="4h">4h</option><option value="6h">6h</option><option value="8h">8h</option><option value="12h">12h</option>
+        </optgroup>
+        <optgroup label="Days/Weeks/Months">
+          <option value="1day">1D</option><option value="1w">1W</option><option value="1M">1M</option><option value="3M">3M</option><option value="6M">6M</option><option value="1Y">1Y</option>
+        </optgroup>
+      </select>
+
+      <label style="display:flex;align-items:center;gap:6px"><input id="demoToggle" type="checkbox" checked/> DEMO</label>
+
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <button id="connectBtn" class="btn btnPrimary">Start</button>
+        <button id="stopBtn" class="btn" disabled>Stop</button>
+      </div>
+    </div>
+
+    <div id="chartContainer" style="flex:1"></div>
+
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
+      <button id="simBuy" class="btn btnBuy">Sim BUY</button>
+      <button id="simSell" class="btn btnSell">Sim SELL</button>
+      <button id="clearMarkers" class="btn">Clear Markers</button>
+      <div style="margin-left:auto" class="small">Markers persist locally for backtesting</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Signals & Auto -->
+  <div class="card" style="overflow:auto;padding:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <h3 style="margin:0 0 6px 0">Lumina — Signals & Auto</h3>
+        <div class="small">Lumina — Forex Partner. Replace BRIDGE_HTTP with your backend to enable live execution.</div>
+      </div>
+      <div>
+        <span class="badge">Hybrid UI</span>
+      </div>
+    </div>
+
+    <div style="margin-top:12px">
+      <strong>Live Signals</strong>
+      <div id="signalsList" class="signalsList"></div>
+    </div>
+
+    <hr/>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="controls-row">
+        <label style="display:flex;align-items:center;gap:6px"><input id="autoToggle" type="checkbox" /> Auto Trade</label>
+        <label style="display:flex;align-items:center;gap:6px">Conf ≥ <input id="autoConf" type="number" min="50" max="100" value="95" style="width:72px" />%</label>
+        <label style="display:flex;align-items:center;gap:6px">Risk% <input id="riskPerTrade" type="number" min="0.05" step="0.05" value="0.5" style="width:72px" />%</label>
+      </div>
+
+      <div style="display:flex;gap:8px">
+        <button id="autoStartBtn" class="btn btnPrimary">Start Auto</button>
+        <button id="autoStopBtn" class="btn" disabled>Stop Auto</button>
+        <button id="killBtn" class="btn btnWarn">KILL</button>
+      </div>
+
+      <div id="autoState" class="small">Auto: OFF • Kill: OFF</div>
+    </div>
+
+    <hr/>
+    <div style="margin-top:8px">
+      <strong>Bridge</strong>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+        <input id="bridgeUrl" placeholder="https://your-bridge.onrender.com" style="width:100%" />
+        <button id="getToken" class="btn">Get Token</button>
+      </div>
+      <div class="small" id="acctInfo" style="margin-top:8px">Account: —</div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="sendLatest" class="btn">Send Latest</button>
+        <button id="sendAll" class="btn">Send Last 5</button>
+      </div>
+    </div>
+
+    <div class="small" style="margin-top:10px">Theme: <button id="themeToggle" class="btn">Light/Dark</button> • Desktop: <button id="desktopToggleButton" class="btn">Toggle</button></div>
+
+    <footer class="note">Note: This frontend is demo-only until you deploy a secure backend (Render/Python) and set BRIDGE_HTTP. I cannot execute real trades by itself.</footer>
+  </div>
+</div>
+
+<!-- Assistant + controls -->
+<button id="assistantToggle" class="assistantBtn" title="Open Lumina Assistant">💜 Lumina</button>
+<button id="desktopToggle" class="desktopToggle">Desktop Mode</button>
+<div id="toast" class="toast"></div>
+
+<!-- Assistant Panel -->
+<div id="assistantPanel" class="assistantPanel" aria-hidden="true">
+  <div class="assistantHeader">
+    <div class="avatar" id="luminaAvatar" title="Lumina — Forex Partner">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="24" height="24" rx="6" fill="#fff1f8"/><path d="M12 12c1.6569 0 3-1.3431 3-3s-1.3431-3-3-3-3 1.3431-3 3 1.3431 3 3 3z" fill="#7b2aa6"/><path d="M6 20c0-2.5 3.134-4 6-4s6 1.5 6 4v0H6z" fill="#7b2aa6"/></svg>
+    </div>
+    <div>
+      <div style="font-weight:800">Lumina — Forex Partner</div>
+      <div class="small">Ask Lumina about chart, trades, or upload screenshot</div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button id="assistantClose" style="background:transparent;border:none;color:var(--muted)">Close</button>
+      <button id="themeToggleHeader" style="background:transparent;border:none;color:var(--muted)">Light/Dark</button>
+    </div>
+  </div>
+
+  <div class="assistantBody">
+    <div id="chatArea" class="chatArea"></div>
+
+    <div class="chatInput">
+      <input id="chatInput" placeholder="Ask Lumina..." style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit" />
+      <button id="micBtn" class="btn">🎤</button>
+      <input id="imageInput" type="file" accept="image/*" style="display:none" />
+      <button id="cameraBtn" class="btn">📷</button>
+      <button id="sendChatBtn" class="btn btnPrimary">Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========== CONFIG ==========
+ Replace BRIDGE_HTTP with your deployed backend (Render, Deta, VPS) when ready.
+ Example: https://lumina-bridge-yourname.onrender.com
+ Backend endpoints expected (recommended):
+  - POST /signal        (receive UI signal)
+  - POST /trade/execute (execute trade: body { trade:{symbol,type,price,sl,tp,lot}, auto:true/false })
+  - POST /image         (send screenshot for analysis)
+  - GET  /token         (get token)
+================================ */
+let BRIDGE_HTTP = "https://placeholder.render.com"; // replace after backend deployed
+let TOKEN = ""; // obtained from bridge
+let AUTO_ON = false;
+let KILL = false;
+const REQUIRE_EXACT_100_FOR_AUTO = true; // frontend safety guard
+
+/* ---------- UI refs ---------- */
+const symbolSelect = document.getElementById('symbolSelect');
+const tfSelect = document.getElementById('tfSelect');
+const demoToggle = document.getElementById('demoToggle');
+const connectBtn = document.getElementById('connectBtn');
+const stopBtn = document.getElementById('stopBtn');
+const chartContainer = document.getElementById('chartContainer');
+const signalsList = document.getElementById('signalsList');
+const simBuy = document.getElementById('simBuy'), simSell = document.getElementById('simSell'), clearMarkersBtn = document.getElementById('clearMarkers');
+const autoStartBtn = document.getElementById('autoStartBtn'), autoStopBtn = document.getElementById('autoStopBtn'), killBtn = document.getElementById('killBtn');
+const autoStateEl = document.getElementById('autoState'), autoConf = document.getElementById('autoConf'), riskPerTrade = document.getElementById('riskPerTrade');
+const bridgeUrlInput = document.getElementById('bridgeUrl'), getTokenBtn = document.getElementById('getToken'), acctInfo = document.getElementById('acctInfo');
+const sendLatestBtn = document.getElementById('sendLatest'), sendAllBtn = document.getElementById('sendAll');
+const assistantToggle = document.getElementById('assistantToggle'), assistantPanel = document.getElementById('assistantPanel'), assistantClose = document.getElementById('assistantClose');
+const chatArea = document.getElementById('chatArea'), chatInput = document.getElementById('chatInput'), sendChatBtn = document.getElementById('sendChatBtn'), cameraBtn = document.getElementById('cameraBtn'), imageInput = document.getElementById('imageInput');
+const themeToggle = document.getElementById('themeToggle'), desktopToggleBtn = document.getElementById('desktopToggleButton'), desktopToggleSmall = document.getElementById('desktopToggle');
+
+/* ---------- Chart setup (green up, red down) ---------- */
+const chart = LightweightCharts.createChart(chartContainer, {
+  layout: { backgroundColor: '#071022', textColor: '#e6eef8' },
+  grid: { vertLines:{visible:false}, horzLines:{color:'rgba(255,255,255,0.03)'} },
+  rightPriceScale: { borderVisible:false },
+  timeScale: { timeVisible:true }
+});
+const candleSeries = chart.addCandlestickSeries({
+  upColor: '#00b050', downColor: '#ff4d4d', borderVisible: true,
+  wickUpColor: '#00b050', wickDownColor: '#ff4d4d'
+});
+
+/* ---------- State ---------- */
+let candles = [];
+let markers = [];
+let latestSignal = null;
+let simTimer = null;
+
+/* ---------- 100+ Forex pairs (expandable) ---------- */
+const SYMBOLS = [
+  "EUR/USD","USD/JPY","GBP/USD","USD/CHF","AUD/USD","USD/CAD","NZD/USD","EUR/GBP","EUR/JPY","GBP/JPY",
+  "AUD/JPY","CHF/JPY","CAD/JPY","EUR/CHF","EUR/AUD","EUR/CAD","GBP/CHF","GBP/AUD","AUD/CAD","AUD/CHF",
+  "NZD/JPY","NZD/CAD","USD/ARS","USD/BRL","USD/INR","USD/MXN","USD/TRY","USD/ZAR","USD/SGD","USD/HKD",
+  "EUR/TRY","GBP/TRY","TRY/JPY","EUR/NZD","GBP/NZD","CAD/CHF","CAD/SGD","AUD/NZD","EUR/SGD","GBP/SGD",
+  "XAU/USD","XAG/USD","BTC/USD","ETH/USD","USD/PLN","EUR/PLN","USD/NOK","EUR/NOK","USD/SEK","EUR/SEK",
+  "EUR/HUF","USD/HUF","CZK/PLN","SGD/JPY","CAD/JPY","HKD/JPY","USD/ILS","EUR/ILS","USD/KRW","USD/IDR",
+  "USD/THB","EUR/DKK","USD/DKK","EUR/BGN","USD/CZK","EUR/CZK","ZAR/JPY","TRY/GBP","TRY/EUR","CHF/HKD",
+  "USD/CLP","USD/COP","USD/EGP","MXN/JPY","AUD/SGD","GBP/CAD","EUR/IDR","EUR/INR","GBP/INR","AUD/INR",
+  "NZD/INR","CAD/INR","EUR/MXN","GBP/MXN","AUD/CHF","BTC/EUR","ETH/EUR","USOIL","UKOIL","XPD/USD",
+  "XPT/USD","EUR/USDT","USD/USDT","USDT/TRY","EUR/USDC","USD/USDC","AUD/USDT","GBP/USDT","BTC/USDT","ETH/USDT",
+  "EUR/KRW","USD/KWD","USD/OMR","USD/SAR","USD/AED","EUR/BRL","GBP/BRL","BRL/USD","ARS/USD","CLP/USD"
+];
+SYMBOLS.forEach(s => { const o=document.createElement('option'); o.value=s; o.innerText=s; symbolSelect.appendChild(o); });
+symbolSelect.value = "EUR/USD";
+
+/* ---------- Helper: timeframe -> ms ---------- */
+function tfToMs(tf){
+  if(tf==='1s') return 1000; if(tf==='5s') return 5000; if(tf==='10s') return 10000; if(tf==='15s') return 15000; if(tf==='30s') return 30000;
+  if(tf==='1min') return 60*1000; if(tf==='3min') return 3*60*1000; if(tf==='5min') return 5*60*1000; if(tf==='10min') return 10*60*1000;
+  if(tf==='15min') return 15*60*1000; if(tf==='30min') return 30*60*1000; if(tf==='45min') return 45*60*1000;
+  if(tf==='1h') return 60*60*1000; if(tf==='2h') return 2*60*60*1000; if(tf==='3h') return 3*60*60*1000; if(tf==='4h') return 4*60*60*1000;
+  if(tf==='6h') return 6*60*60*1000; if(tf==='8h') return 8*60*60*1000; if(tf==='12h') return 12*60*60*1000;
+  if(tf==='1day') return 24*60*60*1000; if(tf==='2day') return 2*24*60*60*1000; if(tf==='3day') return 3*24*60*60*1000;
+  if(tf==='1w') return 7*24*60*60*1000; if(tf==='2w') return 14*24*60*60*1000;
+  if(tf==='1M') return 30*24*60*60*1000; if(tf==='3M') return 90*24*60*60*1000; if(tf==='6M') return 180*24*60*60*1000; if(tf==='1Y') return 365*24*60*60*1000;
+  return 60*1000;
+}
+
+/* ---------- Seed price (exchange-rate API fallback) ---------- */
+async function seedPrice(pair){
+  const [base,quote] = (pair||'EUR/USD').split('/');
+  try {
+    const res = await fetch(`https://api.exchangerate.host/latest?base=${base}&symbols=${quote}`);
+    const j = await res.json();
+    if(j && j.rates && j.rates[quote]) return Number(j.rates[quote]);
+  } catch(e){}
+  return (1 + Math.random()*0.2);
+}
+
+/* ---------- Local storage for markers ---------- */
+function persistMarkers(sym,tf){ try{ localStorage.setItem('lumina_markers_'+sym.replace('/','')+'_'+tf, JSON.stringify(markers)); }catch(e){} }
+function loadMarkers(sym,tf){ try{ const v = localStorage.getItem('lumina_markers_'+sym.replace('/','')+'_'+tf); return v ? JSON.parse(v) : []; }catch(e){return []; } }
+
+/* ---------- Demo candles simulator (for mobile testing) ---------- */
+async function startDemo(sym,tf){
+  stopDemo();
+  showToast('Starting demo candles...');
+  let p = await seedPrice(sym);
+  candles = [];
+  const now = Date.now(); const interval = tfToMs(tf);
+  // initialize 120 candles
+  for(let i=120;i>0;i--){
+    const t = Math.floor((now - i*interval)/1000);
+    const o = Number((p + (Math.random()-0.5)*0.002).toFixed(6));
+    const c = Number((o + (Math.random()-0.5)*0.002).toFixed(6));
+    const h = Number((Math.max(o,c) + Math.random()*0.001).toFixed(6));
+    const l = Number((Math.min(o,c) - Math.random()*0.001).toFixed(6));
+    candles.push({ time: t, open:o, high:h, low:l, close:c });
+    p = c;
+  }
+  candleSeries.setData(candles);
+  markers = loadMarkers(sym,tf) || [];
+  candleSeries.setMarkers(markers);
+  simTimer = setInterval(()=> {
+    const last = candles[candles.length-1];
+    if(!last) return;
+    // update last candle
+    const newP = Number((last.close + (Math.random()-0.5)*0.0015).toFixed(6));
+    last.high = Math.max(last.high, newP);
+    last.low = Math.min(last.low, newP);
+    last.close = newP;
+    candleSeries.update(last);
+    if(Math.random()<0.18){
+      const o = last.close; const c = Number((o + (Math.random()-0.5)*0.003).toFixed(6)); const h = Math.max(o,c)+Math.random()*0.001; const l = Math.min(o,c)-Math.random()*0.001;
+      const nc = { time: Math.floor(Date.now()/1000), open:o, high:Number(h.toFixed(6)), low:Number(l.toFixed(6)), close:Number(c.toFixed(6)) };
+      candles.push(nc); if(candles.length>200) candles.shift();
+      candleSeries.update(nc);
+    }
+  }, Math.max(300, tfToMs(tf)/6));
+}
+function stopDemo(){ if(simTimer) clearInterval(simTimer); simTimer=null; showToast('Demo stopped'); }
+
+/* ---------- Markers & signal panel ---------- */
+function addMarkerAndPanel(s){
+  latestSignal = s;
+  const marker = { time: s.time || (candles[candles.length-1] && candles[candles.length-1].time) || Math.floor(Date.now()/1000), position: s.type==='BUY'?'belowBar':'aboveBar', color: s.type==='BUY'?'#00b050':'#ff4d4d', shape: s.type==='BUY'?'arrowUp':'arrowDown', text: `${s.type} ${Math.round(s.confidence||0)}%` };
+  markers.push(marker); candleSeries.setMarkers(markers); persistMarkers(s.symbol, s.timeframe);
+  // panel
+  const el = document.createElement('div'); el.className='signalItem';
+  el.innerHTML = `<div style="display:flex;justify-content:space-between"><div><strong style="color:${s.type==='BUY'?'#00b050':'#ff4d4d'}">${s.type}</strong> ${s.symbol}</div><div class="small">${new Date((s.time||Math.floor(Date.now()/1000))*1000).toLocaleString()}</div></div>
+    <div class="small" style="margin-top:6px">${s.reason||''}</div>
+    <div style="margin-top:6px;font-size:13px;color:var(--muted)">Price: ${s.price} • SL: ${s.suggested_sl||'-'} • TP: ${s.suggested_tp||'-'} • Conf: ${s.confidence}%</div>
+    <div style="margin-top:8px;display:flex;gap:8px"><button class="btn">Copy</button><button class="btn btnPrimary">Send</button></div>`;
+  el.querySelector('.btn').addEventListener('click', ()=> { navigator.clipboard.writeText(`${s.type} ${s.symbol} @ ${s.price} SL:${s.suggested_sl||''} TP:${s.suggested_tp||''}`); showToast('Copied'); });
+  el.querySelector('.btnPrimary').addEventListener('click', ()=> sendSignalToBridge(s));
+  signalsList.prepend(el);
+  // keep only last 20
+  if(signalsList.children.length>20) signalsList.removeChild(signalsList.lastChild);
+}
+
+/* ---------- Create demo signal ---------- */
+function makeSignal(type){
+  const last = candles[candles.length-1];
+  if(!last) return null;
+  const price = last.close;
+  const conf = (Math.random()>0.6) ? 100 : (95 + Math.floor(Math.random()*6));
+  const s = { symbol: symbolSelect.value, timeframe: tfSelect.value, type: type, price: Number(price), confidence: conf, suggested_sl: type==='BUY'?Number((price*0.997).toFixed(6)):Number((price*1.003).toFixed(6)), suggested_tp: type==='BUY'?Number((price*1.004).toFixed(6)):Number((price*0.996).toFixed(6)), suggested_lot:0.01, time: Math.floor(Date.now()/1000), reason: 'Lumina demo composite signal' };
+  addMarkerAndPanel(s);
+  // if auto is on, handle it
+  if(document.getElementById('autoToggle').checked) window.lumina_onNewSignal && window.lumina_onNewSignal(s);
+  return s;
+}
+
+/* ---------- Send signal to bridge ---------- */
+async function sendSignalToBridge(signal){
+  const url = (BRIDGE_HTTP && BRIDGE_HTTP!=="https://placeholder.render.com") ? BRIDGE_HTTP : bridgeUrlInput.value.trim() || BRIDGE_HTTP;
+  if(!url || url==="https://placeholder.render.com"){ showToast('Set bridge URL'); return false; }
+  try {
+    const res = await fetch(url.replace(/\/$/,'') + '/signal', { method:'POST', headers:{ 'Content-Type':'application/json', 'x-lumina-token': TOKEN||'' }, body: JSON.stringify(signal) });
+    if(res.ok){ showToast('Signal sent'); return true; } else { showToast('Bridge error'); return false; }
+  } catch(e){ console.warn(e); showToast('Send failed'); return false; }
+}
+
+/* ---------- Compute lot via bridge (optional) ---------- */
+async function computeLotBridge(symbol, price, sl, risk_pct){
+  const url = (BRIDGE_HTTP && BRIDGE_HTTP!=="https://placeholder.render.com") ? BRIDGE_HTTP : bridgeUrlInput.value.trim() || BRIDGE_HTTP;
+  if(!url) return null;
+  try {
+    const r = await fetch(url.replace(/\/$/,'') + '/compute_lot', { method:'POST', headers:{ 'Content-Type':'application/json', 'x-lumina-token': TOKEN||'' }, body: JSON.stringify({ symbol: symbol.replace('/',''), price, sl, risk_pct }) });
+    if(r.ok) return await r.json();
+  } catch(e){ console.warn('compute lot err', e); }
+  return null;
+}
+
+/* ---------- Auto-trade frontend guard & flow ---------- */
+autoStartBtn.addEventListener('click', async ()=>{
+  if(KILL){ showToast('Kill switch ON — disable first'); return; }
+  AUTO_ON = true; autoStartBtn.disabled=true; autoStopBtn.disabled=false; updateAutoState();
+  // inform bridge (if present)
+  try {
+    const url = (BRIDGE_HTTP && BRIDGE_HTTP!=="https://placeholder.render.com") ? BRIDGE_HTTP : bridgeUrlInput.value.trim() || BRIDGE_HTTP;
+    if(url) await fetch(url.replace(/\/$/,'') + '/auto-trade', { method:'POST', headers:{ 'Content-Type':'application/json','x-lumina-token':TOKEN||''}, body: JSON.stringify({ enable:true }) });
+  } catch(e){}
+  showToast('Auto ON (frontend)');
+});
+autoStopBtn.addEventListener('click', async ()=> {
+  AUTO_ON=false; autoStartBtn.disabled=false; autoStopBtn.disabled=true; updateAutoState();
+  try { const url = (BRIDGE_HTTP && BRIDGE_HTTP!=="https://placeholder.render.com") ? BRIDGE_HTTP : bridgeUrlInput.value.trim() || BRIDGE_HTTP; if(url) await fetch(url.replace(/\/$/,'') + '/auto-trade', { method:'POST', headers:{ 'Content-Type':'application/json','x-lumina-token':TOKEN||''}, body: JSON.stringify({ enable:false }) }); }catch(e){}
+  showToast('Auto OFF');
+});
+killBtn.addEventListener('click', ()=> { KILL = !KILL; killBtn.style.background = KILL ? '#4a4a4a' : '#9b2d2d'; killBtn.innerText = KILL ? 'KILLED' : 'KILL'; updateAutoState(); showToast(KILL ? 'Kill ON':'Kill OFF'); });
+
+function updateAutoState(){ autoStateEl.innerText = `Auto: ${AUTO_ON?'ON':'OFF'} • Kill: ${KILL?'ON':'OFF'} • Thr: ${autoConf.value}% • Risk: ${riskPerTrade.value}%`; }
+
+/* Called when a new signal is generated (local demo or future websocket) */
+window.lumina_onNewSignal = async function(signal){
+  addMarkerAndPanel(signal);
+  if(!AUTO_ON || KILL) return;
+  const confThr = Number(autoConf.value || 95);
+  if(REQUIRE_EXACT_100_FOR_AUTO){
+    if(Number(signal.confidence) !== 100){ showToast('Auto requires 100% — skipped'); return; }
+  } else {
+    if(Number(signal.confidence) < confThr){ showToast('Conf below threshold — skipped'); return; }
+  }
+  // compute lot (ask bridge if available) then send execute
+  const comp = await computeLotBridge(signal.symbol, signal.price, signal.suggested_sl, Number(riskPerTrade.value));
+  let lot = (comp && comp.lot) ? comp.lot : signal.suggested_lot || 0.01;
+  const req = { trade: { symbol: signal.symbol.replace('/',''), type: signal.type, price: signal.price, sl: signal.suggested_sl, tp: signal.suggested_tp, lot: lot, confidence: signal.confidence }, auto: true };
+  const url = (BRIDGE_HTTP && BRIDGE_HTTP!=="https://placeholder.render.com") ? BRIDGE_HTTP : bridgeUrlInput.value.trim() || BRIDGE_HTTP;
+  if(!url || url==="https://placeholder.render.com"){ showToast('Bridge URL required'); return; }
+  try {
+    const r = await fetch(url.replace(/\/$/,'') + '/trade/execute', { method:'POST', headers:{ 'Content-Type':'application/json', 'x-lumina-token': TOKEN||'' }, body: JSON.stringify(req) });
+    const j = await r.json();
+    if(r.ok && j.ok) showToast('Auto enqueued: ' + (j.order_id||j.status));
+    else showToast('Auto rejected: ' + (j.error||JSON.stringify(j)));
+  } catch(e){ console.error(e); showToast('Auto send failed'); }
+};
+
+/* ---------- Assistant features: simple local replies, STT, image upload ---------- */
+assistantToggle.addEventListener('click', ()=> { assistantPanel.style.height='92vh'; assistantPanel.setAttribute('aria-hidden','false'); });
+assistantClose.addEventListener('click', ()=> { assistantPanel.style.height='0'; assistantPanel.setAttribute('aria-hidden','true'); });
+
+function appendChatBubble(text, who){
+  const el = document.createElement('div'); el.className = 'chatBubble ' + (who==='user' ? 'bubbleUser' : 'bubbleLumina'); el.innerText = text; chatArea.appendChild(el); chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+async function generateLuminaReply(text){
+  // lightweight demo replies; replace by connecting to LLM endpoint on your bridge
+  if(/trend|direction/i.test(text)) return 'Lumina: Short-term momentum shows bias; check 1H and 4H for confirmation.';
+  if(/sl|stop loss/i.test(text)) return 'Lumina: Use SL just beyond recent structure; keep risk small until strategy proven.';
+  if(/hello|hi/i.test(text)) return 'Hi — I am Lumina, your Forex partner. Test on demo first.';
+  if(/backtest|history/i.test(text)) return 'Lumina: Markers are saved locally on your device for quick visual backtest.';
+  return 'Lumina: Quick analysis ready. Connect your backend for deeper analysis and live execution.';
+}
+
+sendChatBtn.addEventListener('click', async ()=>{
+  const t = chatInput.value.trim(); if(!t) return; chatInput.value=''; appendChatBubble(t,'user'); const reply = await generateLuminaReply(t); appendChatBubble(reply,'lumina');
+  if('speechSynthesis' in window){ const u = new SpeechSynthesisUtterance(reply); u.rate=1; u.pitch=1; speechSynthesis.cancel(); speechSynthesis.speak(u); }
+});
+
+/* ---------- STT (voice to text) ---------- */
+let recognition = null;
+try {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(SR){ recognition = new SR(); recognition.lang='en-US'; recognition.onresult=(ev)=>{ chatInput.value = ev.results[0][0].transcript; }; recognition.onend=()=>{ micBtn.innerText='🎤'; micBtn.disabled=false; }; }
+} catch(e){ recognition=null; }
+document.getElementById('micBtn').addEventListener('click', ()=> { if(!recognition){ showToast('Voice not supported'); return; } try{ recognition.start(); document.getElementById('micBtn').innerText='⏺'; document.getElementById('micBtn').disabled=true; }catch(e){} });
+
+/* ---------- Image upload to bridge (for analysis) ---------- */
+cameraBtn.addEventListener('click', ()=> imageInput.click());
+imageInput.addEventListener('change', (ev)=> {
+  const f = ev.target.files && ev.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = async ()=> {
+    appendChatBubble('Image uploaded — Lumina analyzing...', 'user');
+    const url = (BRIDGE_HTTP && BRIDGE_HTTP!=="https://placeholder.render.com") ? BRIDGE_HTTP : bridgeUrlInput.value.trim() || BRIDGE_HTTP;
+    if(url && url!=="https://placeholder.render.com"){
+      try { await fetch(url.replace(/\/$/,'') + '/image', { method:'POST', headers:{ 'Content-Type':'application/json','x-lumina-token':TOKEN||'' }, body: JSON.stringify({ image: reader.result, meta:{ symbol: symbolSelect.value, timeframe: tfSelect.value } }) }); appendChatBubble('Lumina: Image sent to bridge for analysis.', 'lumina'); } catch(e){ appendChatBubble('Lumina: Image send failed.', 'lumina'); }
+    } else { appendChatBubble('Lumina: Demo analysis — connect bridge for full image analysis.', 'lumina'); }
+  };
+  reader.readAsDataURL(f);
+});
+
+/* ---------- Bridge helpers: token, send latest ---------- */
+getTokenBtn.addEventListener('click', async ()=> {
+  const url = bridgeUrlInput.value.trim() || BRIDGE_HTTP;
+  if(!url){ showToast('Set bridge URL'); return; }
+  try { const r = await fetch(url.replace(/\/$/,'') + '/token'); const j = await r.json(); TOKEN = j.token; showToast('Got demo token'); acctInfo.innerText = 'Token OK (demo)'; } catch(e){ showToast('Token fetch failed'); }
+});
+
+sendLatestBtn.addEventListener('click', async ()=> {
+  if(!latestSignal){ showToast('No latest signal'); return; }
+  const url = bridgeUrlInput.value.trim() || BRIDGE_HTTP;
+  if(!url){ showToast('Set bridge URL'); return; }
+  try {
+    const req = { trade: { symbol: latestSignal.symbol.replace('/',''), type: latestSignal.type, price: latestSignal.price, sl: latestSignal.suggested_sl, tp: latestSignal.suggested_tp, lot: latestSignal.suggested_lot, confidence: latestSignal.confidence }, auto: false };
+    const r = await fetch(url.replace(/\/$/,'') + '/trade/execute', { method:'POST', headers:{ 'Content-Type':'application/json','x-lumina-token':TOKEN||'' }, body: JSON.stringify(req) });
+    const j = await r.json(); if(r.ok && j.ok) showToast('Enqueued: ' + j.order_id); else showToast('Rejected: ' + (j.error||JSON.stringify(j)));
+  } catch(e){ showToast('Send failed'); }
+});
+
+sendAllBtn.addEventListener('click', async ()=> { showToast('Send Last 5 not implemented (demo)'); });
+
+/* ---------- UI events ---------- */
+connectBtn.addEventListener('click', ()=> { if(demoToggle.checked) startDemo(symbolSelect.value, tfSelect.value); else { BRIDGE_HTTP = bridgeUrlInput.value.trim() || BRIDGE_HTTP; showToast('Bridge mode active'); } connectBtn.disabled=true; stopBtn.disabled=false; });
+stopBtn.addEventListener('click', ()=> { stopDemo(); connectBtn.disabled=false; stopBtn.disabled=true; });
+simBuy.addEventListener('click', ()=> makeSignal('BUY'));
+simSell.addEventListener('click', ()=> makeSignal('SELL'));
+clearMarkersBtn.addEventListener('click', ()=> { if(confirm('Clear markers?')){ markers=[]; candleSeries.setMarkers([]); persistMarkers(symbolSelect.value, tfSelect.value); showToast('Cleared'); } });
+
+document.getElementById('themeToggle').addEventListener('click', ()=> { document.body.classList.toggle('light'); showToast(document.body.classList.contains('light') ? 'Light mode' : 'Dark mode'); });
+document.getElementById('themeToggleHeader').addEventListener('click', ()=> { document.body.classList.toggle('light'); showToast(document.body.classList.contains('light') ? 'Light mode' : 'Dark mode'); });
+desktopToggleBtn.addEventListener('click', ()=> { const is = document.body.classList.toggle('desktop'); desktopToggleBtn.innerText = is ? 'Mobile Mode' : 'Desktop Mode'; showToast(is ? 'Desktop mode ON' : 'Mobile mode ON'); });
+desktopToggleSmall.addEventListener('click', ()=> { const is = document.body.classList.toggle('desktop'); desktopToggleSmall.innerText = is ? 'Mobile Mode' : 'Desktop Mode'; showToast(is ? 'Desktop mode ON' : 'Mobile mode ON'); });
+
+/* ---------- Toast ---------- */
+function showToast(msg){ const t = document.getElementById('toast'); t.innerText = msg; t.style.display='block'; setTimeout(()=>t.style.display='none',2500); }
+
+/* ---------- init ---------- */
+(function init(){
+  markers = loadMarkers(symbolSelect.value, tfSelect.value) || [];
+  candleSeries.setMarkers(markers || []);
+  updateAutoState();
+})();
+function updateAutoState(){ autoStateEl.innerText = `Auto: ${AUTO_ON?'ON':'OFF'} • Kill: ${KILL?'ON':'OFF'} • Thr: ${autoConf.value}% • Risk: ${riskPerTrade.value}%`; }
+
+</script>
+</body>
+</html>
